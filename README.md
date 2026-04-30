@@ -19,6 +19,8 @@ bun run build     # type-check + production build
 bun run preview   # preview the production build
 ```
 
+If you use [curse](https://github.com/wu-json/curse), `curse` runs the same dev command (`bun run dev`) via `curse.toml`.
+
 ## Layout
 
 - `src/App.tsx` — scroll layout + a `<canvas>` that auto-resizes (DPR-aware) and is ready to draw on via `canvasRef`.

@@ -28,29 +28,5 @@ export default function App() {
     return () => ro.disconnect();
   }, []);
 
-  return (
-    <div className="stage">
-      <div className="scroll" role="img" aria-label="Japanese hanging scroll">
-        <Roller position="top" />
-
-        <div className="scroll__paper">
-          <div className="scroll__inkframe">
-            <canvas ref={canvasRef} className="scroll__canvas" />
-          </div>
-        </div>
-
-        <Roller position="bottom" />
-      </div>
-    </div>
-  );
-}
-
-function Roller({ position }: { position: "top" | "bottom" }) {
-  return (
-    <div className={`roller roller--${position}`}>
-      <span className="roller__cap roller__cap--left" />
-      <span className="roller__bar" />
-      <span className="roller__cap roller__cap--right" />
-    </div>
-  );
+  return <canvas ref={canvasRef} className="canvas" />;
 }
