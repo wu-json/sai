@@ -1,5 +1,0 @@
-version = 0
-
-[[process]]
-name = "vite"
-command = "bun run dev"
