@@ -3,10 +3,515 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Black Tree</title>
+  <title>Cursed Tree</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #05060a;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .vignette {
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 60%, transparent 30%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.95) 100%);
+      mix-blend-mode: multiply;
+    }
+    .grain {
+      position: fixed; inset: 0; pointer-events: none; opacity: 0.06;
+      background-image:
+        radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px),
+        radial-gradient(rgba(255,255,255,0.4) 1px, transparent 1px);
+      background-size: 3px 3px, 7px 7px;
+      mix-blend-mode: overlay;
+    }
+  </style>
 </head>
 <body>
-  <h1>Black Tree</h1>
-  <p>Placeholder — 2026-04-30</p>
+  <canvas id="c"></canvas>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  // DPR=1 keeps the canvas small enough for low-power laptops.
+  let W = 0, H = 0, DPR = 1;
+
+  // Pre-rendered sprites for cheap drawImage compositing (no per-frame gradients).
+  let leafSprite, petalSprite;
+  let moonSprite, moonSpriteOffsetX = 0, moonSpriteOffsetY = 0;
+
+  // The moon doesn't animate, so bake the halo + crescent into one sprite per
+  // resize. drawMoon() then just blits it. Carving with destination-out on an
+  // offscreen canvas keeps the carved area fully transparent (no halo
+  // bleed-through, no faint dark sphere visible inside the crescent).
+  function buildMoonSprite() {
+    const rad = Math.min(W, H) * 0.028;
+    const haloR = rad * 5;
+    const size = Math.ceil(haloR * 2);
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const x = c.getContext('2d');
+    const cx = size / 2, cy = size / 2;
+
+    // Halo — annular, doesn't fill the disc.
+    const halo = x.createRadialGradient(cx, cy, rad * 0.95, cx, cy, haloR);
+    halo.addColorStop(0,    'rgba(255,255,255,0.18)');
+    halo.addColorStop(0.4,  'rgba(255,255,255,0.05)');
+    halo.addColorStop(1,    'rgba(255,255,255,0)');
+    x.fillStyle = halo;
+    x.beginPath(); x.arc(cx, cy, haloR, 0, Math.PI * 2); x.fill();
+
+    // Pure white disc.
+    x.fillStyle = '#ffffff';
+    x.beginPath(); x.arc(cx, cy, rad, 0, Math.PI * 2); x.fill();
+
+    // Carve crescent shadow with destination-out — fully transparent inside.
+    x.globalCompositeOperation = 'destination-out';
+    x.beginPath();
+    x.arc(cx + rad * 0.55, cy - rad * 0.18, rad * 0.95, 0, Math.PI * 2);
+    x.fill();
+
+    moonSprite = c;
+    moonSpriteOffsetX = cx;
+    moonSpriteOffsetY = cy;
+  }
+
+  function buildSprites() {
+    function radialSprite(size, stops) {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const x = c.getContext('2d');
+      const g = x.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      for (const [o, col] of stops) g.addColorStop(o, col);
+      x.fillStyle = g;
+      x.fillRect(0, 0, size, size);
+      return c;
+    }
+    leafSprite = radialSprite(28, [
+      [0,    'rgba(255,255,255,1)'],
+      [0.18, 'rgba(245,245,255,0.85)'],
+      [0.45, 'rgba(210,220,255,0.20)'],
+      [1,    'rgba(210,220,255,0)'],
+    ]);
+    petalSprite = radialSprite(32, [
+      [0,    'rgba(255,255,255,0.95)'],
+      [0.25, 'rgba(235,240,255,0.45)'],
+      [0.6,  'rgba(200,210,255,0.10)'],
+      [1,    'rgba(200,210,255,0)'],
+    ]);
+  }
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildTree();
+    seedStars();
+    buildMoonSprite();
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- Stars ----------
+  let stars = [];
+  function seedStars() {
+    stars = [];
+    const n = Math.floor((W * H) / 9000); // halved — perf
+    for (let i = 0; i < n; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H * 0.75,
+        r: Math.random() * 1.1 + 0.2,
+        tw: Math.random() * Math.PI * 2,
+        sp: 0.5 + Math.random() * 1.5,
+        hue: Math.random() < 0.1 ? 'red' : 'white',
+      });
+    }
+  }
+
+  // ---------- Tree (procedural, deterministic) ----------
+  // We pre-build a list of branch segments so wind can deform them every frame.
+  // Each branch has: parent index, base offset along parent (0..1 — but we use endpoints),
+  // local angle, length, depth, thickness, sway factor.
+  let branches = [];
+  let leaves = []; // anchor points at branch tips for white blossoms
+  let rootX, rootY;
+
+  // Seeded RNG so the tree is stable but interesting
+  function mulberry32(seed) {
+    return function() {
+      let t = seed += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildTree() {
+    branches = [];
+    leaves = [];
+    rootX = W * 0.5;
+    // Plant the trunk near the horizon ridge so the cyan rim highlight doesn't
+    // trail off into the dark ground (which produced a thin glowing tail).
+    rootY = H * 0.93;
+
+    const rand = mulberry32(11);
+    const trunkLen = Math.min(W, H) * 0.22;
+    const trunkThick = Math.max(11, trunkLen * 0.10);
+
+    // Trunk: a single tall branch (index 0)
+    branches.push({
+      parent: -1,
+      angle: -Math.PI / 2 + (rand() - 0.5) * 0.04,
+      length: trunkLen,
+      depth: 0,
+      thickness: trunkThick,
+      sway: 0.02,
+      x1: 0, y1: 0, x2: 0, y2: 0,
+    });
+
+    const MAX_DEPTH = 9;
+
+    function grow(parentIdx, depth) {
+      const parent = branches[parentIdx];
+
+      // Stop conditions — also where leaves are placed.
+      if (depth >= MAX_DEPTH || parent.length < 4.5) {
+        leaves.push({
+          branch: parentIdx,
+          bloom: 2 + Math.floor(rand() * 3),
+          seed: rand() * 1000,
+        });
+        return;
+      }
+
+      // Branching pattern: at depth 0 the root immediately fans into 2-3 main
+      // limbs (no extra trunk segment), then dense gnarled subdivision after.
+      let splits;
+      if (depth === 0) splits = 2 + (rand() < 0.6 ? 1 : 0);
+      else if (depth < 3) splits = rand() < 0.7 ? 2 : 3;
+      else if (depth < 6) splits = rand() < 0.55 ? 2 : (rand() < 0.55 ? 3 : 1);
+      else splits = rand() < 0.6 ? 2 : 1;
+
+      for (let i = 0; i < splits; i++) {
+        let angle;
+        const gnarl = (rand() - 0.5) * (0.20 + depth * 0.07);
+
+        if (depth === 0) {
+          // main limbs: wide upward fan
+          const t = splits === 1 ? 0 : (i / (splits - 1)) - 0.5;
+          angle = parent.angle + t * 1.1 + (rand() - 0.5) * 0.18;
+        } else {
+          const spread = 0.5 + rand() * 0.7;
+          const t = splits === 1 ? (rand() - 0.5) * 0.6 : (i - (splits - 1) / 2) / Math.max(1, splits - 1);
+          angle = parent.angle + t * spread * 1.4 + gnarl;
+          // Anti-droop: lift branches that would point downward, but only above
+          // a certain depth so outer twigs can still hang.
+          if (Math.sin(parent.angle) > 0 && depth < 6) angle -= 0.18 * rand();
+        }
+
+        let lenFactor;
+        if (depth === 0) lenFactor = 0.72 + rand() * 0.18;
+        else lenFactor = 0.62 + rand() * 0.18 - depth * 0.018;
+        const length = parent.length * lenFactor;
+        if (length < 2.5) continue;
+
+        const thinFactor = depth === 0 ? 0.6 + rand() * 0.12 : 0.58 + rand() * 0.12;
+        const thickness = Math.max(0.5, parent.thickness * thinFactor);
+        const sway = parent.sway + 0.035 + rand() * 0.04;
+
+        const idx = branches.length;
+        branches.push({
+          parent: parentIdx,
+          angle, length, depth: depth + 1, thickness, sway,
+          x1: 0, y1: 0, x2: 0, y2: 0,
+        });
+
+        grow(idx, depth + 1);
+      }
+    }
+    grow(0, 0);
+  }
+
+  // ---------- Falling petals/leaves ----------
+  const petals = [];
+  function spawnPetal(x, y, fromTip = true) {
+    petals.push({
+      x: x + (Math.random() - 0.5) * 8,
+      y: y + (Math.random() - 0.5) * 4,
+      vx: (Math.random() - 0.5) * 0.4,
+      vy: 0.15 + Math.random() * 0.45,
+      r: 1.2 + Math.random() * 1.8,
+      life: 0,
+      maxLife: 600 + Math.random() * 600,
+      phase: Math.random() * Math.PI * 2,
+      glow: 0.6 + Math.random() * 0.5,
+    });
+  }
+
+  // ---------- Mist bands ----------
+  // The mist used to wrap each blob via `% 1`, which produced a discontinuous
+  // jump from the right edge back to the left several times per second —
+  // visible as bottom-half shimmering. Fix: very slow drift, and fade alpha to
+  // zero near the edges so wrap is invisible.
+  function drawMist(t) {
+    const grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+    grad.addColorStop(0, 'rgba(120,140,180,0)');
+    grad.addColorStop(0.6, 'rgba(140,150,190,0.05)');
+    grad.addColorStop(1, 'rgba(180,190,220,0.10)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const period = 60000; // 60s full sweep — imperceptible motion, no jitter.
+    for (let i = 0; i < 4; i++) {
+      const y = H * (0.78 + i * 0.04);
+      const r = 220 + i * 60;
+      const span = W + r * 2;
+      // Continuous looping position; offset per blob so they don't align.
+      const phase = ((t / (period * (1 + i * 0.4))) + i * 0.31) % 1;
+      const x = phase * span - r;
+      // Edge fade: blobs taper to alpha 0 in the outer 12% so the wrap-around
+      // is never visible.
+      let edgeFade = 1;
+      if (phase < 0.12) edgeFade = phase / 0.12;
+      else if (phase > 0.88) edgeFade = (1 - phase) / 0.12;
+      const alpha = 0.08 * edgeFade;
+      if (alpha < 0.001) continue;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(170,180,210,${alpha})`);
+      g.addColorStop(1, 'rgba(170,180,210,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ---------- Background ----------
+  function drawSky(t) {
+    // deep indigo to near-black, with cold cyan horizon haze
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0.0, '#06070d');
+    g.addColorStop(0.45, '#0b0f1c');
+    g.addColorStop(0.75, '#121a2a');
+    g.addColorStop(0.92, '#1a2236');
+    g.addColorStop(1.0, '#0a0c14');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // subtle aurora-ish sweep
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const sweep = ctx.createRadialGradient(W * 0.25, H * 0.25, 0, W * 0.25, H * 0.25, Math.max(W, H) * 0.6);
+    sweep.addColorStop(0, 'rgba(60,30,80,0.18)');
+    sweep.addColorStop(1, 'rgba(60,30,80,0)');
+    ctx.fillStyle = sweep;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  function drawMoon(t) {
+    // Distant pure-white crescent, baked into a sprite. One drawImage call.
+    if (!moonSprite) return;
+    const mx = W * 0.84;
+    const my = H * 0.16;
+    ctx.drawImage(moonSprite, mx - moonSpriteOffsetX, my - moonSpriteOffsetY);
+  }
+
+  function drawStars(t) {
+    for (const s of stars) {
+      const a = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 0.001 * s.sp + s.tw));
+      ctx.fillStyle = s.hue === 'red'
+        ? `rgba(220,90,90,${a * 0.8})`
+        : `rgba(235,235,255,${a})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ---------- Tree drawing with wind ----------
+  function computeBranchPositions(t) {
+    // wind: low-frequency sway, applied cumulatively from root
+    const wind = Math.sin(t * 0.0006) * 0.03 + Math.sin(t * 0.0017 + 1.3) * 0.018;
+    for (let i = 0; i < branches.length; i++) {
+      const b = branches[i];
+      let baseX, baseY, parentAngleAccum;
+      if (b.parent === -1) {
+        baseX = rootX; baseY = rootY;
+        b._angleEff = b.angle + wind * b.sway;
+      } else {
+        const p = branches[b.parent];
+        baseX = p.x2; baseY = p.y2;
+        // inherit a tiny bit of parent's effective angle delta to keep continuity
+        const delta = (p._angleEff - p.angle);
+        b._angleEff = b.angle + wind * b.sway + delta * 0.55
+          + Math.sin(t * 0.0013 + i * 0.7) * 0.006 * b.depth; // micro flutter
+      }
+      b.x1 = baseX; b.y1 = baseY;
+      b.x2 = baseX + Math.cos(b._angleEff) * b.length;
+      b.y2 = baseY + Math.sin(b._angleEff) * b.length;
+    }
+  }
+
+  function drawTree(t) {
+    // Single pass: pure black ink silhouette at each branch's own thickness.
+    // The earlier ink-bleed halo and moonlight rim both produced visible
+    // "skeleton" lines (a fixed-width halo wider than thin twigs, and a cyan
+    // stripe parallel to thick branches). Dropping them gives a clean ink-on-
+    // night-sky look that matches the cursed-anime mood better.
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#000';
+    for (const b of branches) {
+      ctx.lineWidth = b.thickness;
+      ctx.beginPath();
+      ctx.moveTo(b.x1, b.y1);
+      ctx.lineTo(b.x2, b.y2);
+      ctx.stroke();
+    }
+  }
+
+  function drawLeaves(t) {
+    // Single pass using a cached sprite — no per-frame gradients.
+    // The sprite already has a soft halo + bright core, so one drawImage per
+    // blossom replaces the old two passes. Cheap and crisp.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const sw = leafSprite.width;
+    for (const L of leaves) {
+      const b = branches[L.branch];
+      if (!b) continue;
+      const cx = b.x2, cy = b.y2;
+      const pulse = 0.7 + 0.3 * Math.sin(t * 0.0018 + L.seed);
+      ctx.globalAlpha = pulse;
+      for (let i = 0; i < L.bloom; i++) {
+        const ang = L.seed * 0.7 + i * 2.1;
+        const dist = 0.5 + (i % 3) * 1.6 + Math.sin(t * 0.002 + L.seed + i) * 0.5;
+        const px = cx + Math.cos(ang) * dist;
+        const py = cy + Math.sin(ang) * dist;
+        const size = 5 + (i % 2) * 2;
+        ctx.drawImage(leafSprite, px - size / 2, py - size / 2, size, size);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawPetals(t, dt) {
+    // Sprite-based: drawImage instead of per-particle radial gradients.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = petals.length - 1; i >= 0; i--) {
+      const p = petals[i];
+      p.life += dt;
+      p.vx += Math.sin(t * 0.0008 + p.phase) * 0.0015;
+      p.x += p.vx;
+      p.y += p.vy;
+      const wob = Math.sin(t * 0.004 + p.phase) * 0.6;
+      const lifeT = p.life / p.maxLife;
+      const a = lifeT < 0.15 ? lifeT / 0.15 : (lifeT > 0.85 ? (1 - lifeT) / 0.15 : 1);
+      const alpha = Math.max(0, Math.min(1, a)) * p.glow;
+      const size = p.r * 6;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(petalSprite, p.x + wob - size / 2, p.y - size / 2, size, size);
+      if (p.life > p.maxLife || p.y > H + 20) petals.splice(i, 1);
+    }
+    ctx.restore();
+  }
+
+  // distant ground silhouette — softened with a vertical fade so the horizon
+  // doesn't read as a hard bar.
+  function drawGround() {
+    // far ridge line
+    ctx.fillStyle = '#0a0d18';
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(0, H * 0.88);
+    let steps = 26;
+    for (let i = 0; i <= steps; i++) {
+      const x = (i / steps) * W;
+      const y = H * 0.88 + Math.sin(i * 0.55 + 0.4) * 10 + Math.sin(i * 1.7 + 1.1) * 5;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    // near ground
+    const grad = ctx.createLinearGradient(0, H * 0.92, 0, H);
+    grad.addColorStop(0, 'rgba(2,3,8,0.0)');
+    grad.addColorStop(0.4, 'rgba(2,3,8,0.85)');
+    grad.addColorStop(1, 'rgba(2,3,8,1)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    ctx.lineTo(0, H * 0.94);
+    steps = 18;
+    for (let i = 0; i <= steps; i++) {
+      const x = (i / steps) * W;
+      const y = H * 0.95 + Math.sin(i * 0.9 + 2.1) * 4 + Math.sin(i * 2.2) * 2;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ---------- Main loop ----------
+  let last = performance.now();
+  let petalAcc = 0;
+
+  function frame(now) {
+    const dt = Math.min(64, now - last);
+    last = now;
+    const t = now;
+
+    drawSky(t);
+    drawStars(t);
+    drawMoon(t);
+    drawMist(t);
+    drawGround();
+
+    computeBranchPositions(t);
+    drawTree(t);
+    drawLeaves(t);
+
+    // spawn petals from random leaf tips
+    petalAcc += dt;
+    while (petalAcc > 180) { // halved spawn rate
+      petalAcc -= 180;
+      if (leaves.length && petals.length < 90) {
+        const L = leaves[Math.floor(Math.random() * leaves.length)];
+        const b = branches[L.branch];
+        if (b) spawnPetal(b.x2, b.y2);
+      }
+    }
+
+    drawPetals(t, dt);
+
+    requestAnimationFrame(frame);
+  }
+
+  buildSprites();
+  resize();
+  // pre-fill a smaller batch of ambient petals so the first frame isn't bare
+  for (let i = 0; i < 22; i++) {
+    spawnPetal(Math.random() * W, Math.random() * H * 0.7);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>
