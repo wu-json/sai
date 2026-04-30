@@ -39,48 +39,14 @@
 (() => {
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
-  // DPR=1 keeps the canvas small enough for low-power laptops.
-  let W = 0, H = 0, DPR = 1;
+  // DPR=1 was visibly pixelated on Retina (the moon's curves looked blocky).
+  // After all the perf work (no shadowBlur, sprite-based particles, single-
+  // pass tree, cached gradients), DPR=2 renders smoothly. Cap at 2 so 3x
+  // displays don't blow up the backing store for marginal visual gain.
+  let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
 
   // Pre-rendered sprites for cheap drawImage compositing (no per-frame gradients).
   let leafSprite, petalSprite;
-  let moonSprite, moonSpriteOffsetX = 0, moonSpriteOffsetY = 0;
-
-  // The moon doesn't animate, so bake the halo + crescent into one sprite per
-  // resize. drawMoon() then just blits it. Carving with destination-out on an
-  // offscreen canvas keeps the carved area fully transparent (no halo
-  // bleed-through, no faint dark sphere visible inside the crescent).
-  function buildMoonSprite() {
-    const rad = Math.min(W, H) * 0.028;
-    const haloR = rad * 5;
-    const size = Math.ceil(haloR * 2);
-    const c = document.createElement('canvas');
-    c.width = c.height = size;
-    const x = c.getContext('2d');
-    const cx = size / 2, cy = size / 2;
-
-    // Halo — annular, doesn't fill the disc.
-    const halo = x.createRadialGradient(cx, cy, rad * 0.95, cx, cy, haloR);
-    halo.addColorStop(0,    'rgba(255,255,255,0.18)');
-    halo.addColorStop(0.4,  'rgba(255,255,255,0.05)');
-    halo.addColorStop(1,    'rgba(255,255,255,0)');
-    x.fillStyle = halo;
-    x.beginPath(); x.arc(cx, cy, haloR, 0, Math.PI * 2); x.fill();
-
-    // Pure white disc.
-    x.fillStyle = '#ffffff';
-    x.beginPath(); x.arc(cx, cy, rad, 0, Math.PI * 2); x.fill();
-
-    // Carve crescent shadow with destination-out — fully transparent inside.
-    x.globalCompositeOperation = 'destination-out';
-    x.beginPath();
-    x.arc(cx + rad * 0.55, cy - rad * 0.18, rad * 0.95, 0, Math.PI * 2);
-    x.fill();
-
-    moonSprite = c;
-    moonSpriteOffsetX = cx;
-    moonSpriteOffsetY = cy;
-  }
 
   function buildSprites() {
     function radialSprite(size, stops) {
@@ -117,7 +83,6 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     buildTree();
     seedStars();
-    buildMoonSprite();
   }
   window.addEventListener('resize', resize);
 
@@ -165,13 +130,17 @@
     rootY = H * 0.93;
 
     const rand = mulberry32(11);
-    const trunkLen = Math.min(W, H) * 0.22;
-    const trunkThick = Math.max(11, trunkLen * 0.10);
+    // Medium-sized tree — shorter trunk so the canopy lands in the middle of
+    // the frame rather than reaching toward the top edge.
+    const trunkLen = Math.min(W, H) * 0.16;
+    const trunkThick = Math.max(9, trunkLen * 0.11);
 
-    // Trunk: a single tall branch (index 0)
+    // Trunk: a single tall branch (index 0). Slight intentional lean so the
+    // tree never reads as bilaterally symmetric.
+    const trunkLean = (rand() < 0.5 ? -1 : 1) * (0.06 + rand() * 0.05);
     branches.push({
       parent: -1,
-      angle: -Math.PI / 2 + (rand() - 0.5) * 0.04,
+      angle: -Math.PI / 2 + trunkLean,
       length: trunkLen,
       depth: 0,
       thickness: trunkThick,
@@ -184,7 +153,6 @@
     function grow(parentIdx, depth) {
       const parent = branches[parentIdx];
 
-      // Stop conditions — also where leaves are placed.
       if (depth >= MAX_DEPTH || parent.length < 4.5) {
         leaves.push({
           branch: parentIdx,
@@ -194,33 +162,46 @@
         return;
       }
 
-      // Branching pattern: at depth 0 the root immediately fans into 2-3 main
-      // limbs (no extra trunk segment), then dense gnarled subdivision after.
+      // Same gnarled-tree character as before, just sparser — most depths
+      // strongly favor a single "continuation" segment instead of forking,
+      // which roughly halves the total branch count without changing shape.
       let splits;
-      if (depth === 0) splits = 2 + (rand() < 0.6 ? 1 : 0);
-      else if (depth < 3) splits = rand() < 0.7 ? 2 : 3;
-      else if (depth < 6) splits = rand() < 0.55 ? 2 : (rand() < 0.55 ? 3 : 1);
-      else splits = rand() < 0.6 ? 2 : 1;
+      if (depth === 0) splits = 2 + (rand() < 0.5 ? 1 : 0); // main limbs (2-3)
+      else if (depth < 3) splits = rand() < 0.55 ? 2 : 1;
+      else if (depth < 6) splits = rand() < 0.40 ? 2 : (rand() < 0.15 ? 3 : 1);
+      else splits = rand() < 0.30 ? 2 : 1;
+
+      // Asymmetric main-limb fan: pick a random side to bias toward, and give
+      // each main limb a different "vigor" that scales its length. The longer
+      // limb's descendants inherit that length, so the silhouette is
+      // unmistakably lopsided.
+      const fanSkew = depth === 0 ? (rand() - 0.5) * 0.5 : 0;
+      // Per-limb vigor with a tighter range than before — still asymmetric,
+      // but no single limb shoots dramatically taller than the others.
+      const limbVigor = depth === 0
+        ? Array.from({ length: splits }, () => 0.75 + rand() * 0.40)
+        : null;
 
       for (let i = 0; i < splits; i++) {
         let angle;
         const gnarl = (rand() - 0.5) * (0.20 + depth * 0.07);
 
         if (depth === 0) {
-          // main limbs: wide upward fan
           const t = splits === 1 ? 0 : (i / (splits - 1)) - 0.5;
-          angle = parent.angle + t * 1.1 + (rand() - 0.5) * 0.18;
+          // fanSkew shifts the entire fan off-center; per-limb noise keeps
+          // each branch unique.
+          angle = parent.angle + t * 1.1 + fanSkew + (rand() - 0.5) * 0.22;
+        } else if (splits === 1) {
+          angle = parent.angle + (rand() - 0.5) * 0.5 + gnarl * 0.6;
         } else {
           const spread = 0.5 + rand() * 0.7;
-          const t = splits === 1 ? (rand() - 0.5) * 0.6 : (i - (splits - 1) / 2) / Math.max(1, splits - 1);
+          const t = (i - (splits - 1) / 2) / Math.max(1, splits - 1);
           angle = parent.angle + t * spread * 1.4 + gnarl;
-          // Anti-droop: lift branches that would point downward, but only above
-          // a certain depth so outer twigs can still hang.
           if (Math.sin(parent.angle) > 0 && depth < 6) angle -= 0.18 * rand();
         }
 
         let lenFactor;
-        if (depth === 0) lenFactor = 0.72 + rand() * 0.18;
+        if (depth === 0) lenFactor = (0.72 + rand() * 0.18) * limbVigor[i];
         else lenFactor = 0.62 + rand() * 0.18 - depth * 0.018;
         const length = parent.length * lenFactor;
         if (length < 2.5) continue;
@@ -322,14 +303,6 @@
     ctx.restore();
   }
 
-  function drawMoon(t) {
-    // Distant pure-white crescent, baked into a sprite. One drawImage call.
-    if (!moonSprite) return;
-    const mx = W * 0.84;
-    const my = H * 0.16;
-    ctx.drawImage(moonSprite, mx - moonSpriteOffsetX, my - moonSpriteOffsetY);
-  }
-
   function drawStars(t) {
     for (const s of stars) {
       const a = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 0.001 * s.sp + s.tw));
@@ -367,20 +340,34 @@
   }
 
   function drawTree(t) {
-    // Single pass: pure black ink silhouette at each branch's own thickness.
-    // The earlier ink-bleed halo and moonlight rim both produced visible
-    // "skeleton" lines (a fixed-width halo wider than thin twigs, and a cyan
-    // stripe parallel to thick branches). Dropping them gives a clean ink-on-
-    // night-sky look that matches the cursed-anime mood better.
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#000';
+    // Each branch is filled as a tapered trapezoid from its base width
+    // (parent's tip thickness) to its own tip thickness. Because the parent's
+    // tip width equals each child's base width, branch joins are seamless —
+    // no "stepped" thickness change at forks. Round caps at each tip smooth
+    // the leaf-attachment points.
+    ctx.fillStyle = '#000';
     for (const b of branches) {
-      ctx.lineWidth = b.thickness;
+      const startW = b.parent >= 0 ? branches[b.parent].thickness : b.thickness;
+      const endW = b.thickness;
+      // perpendicular to the branch direction
+      const sinA = Math.sin(b._angleEff);
+      const cosA = Math.cos(b._angleEff);
+      const nx = -sinA, ny = cosA;
+      const sH = startW * 0.5;
+      const eH = endW * 0.5;
       ctx.beginPath();
-      ctx.moveTo(b.x1, b.y1);
-      ctx.lineTo(b.x2, b.y2);
-      ctx.stroke();
+      ctx.moveTo(b.x1 + nx * sH, b.y1 + ny * sH);
+      ctx.lineTo(b.x2 + nx * eH, b.y2 + ny * eH);
+      ctx.lineTo(b.x2 - nx * eH, b.y2 - ny * eH);
+      ctx.lineTo(b.x1 - nx * sH, b.y1 - ny * sH);
+      ctx.closePath();
+      ctx.fill();
+      // round cap at the tip so terminal twigs don't end in a hard rectangle
+      if (eH > 0.4) {
+        ctx.beginPath();
+        ctx.arc(b.x2, b.y2, eH, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -480,7 +467,6 @@
 
     drawSky(t);
     drawStars(t);
-    drawMoon(t);
     drawMist(t);
     drawGround();
 
