@@ -32,34 +32,34 @@ export default function App() {
           <>
             <canvas ref={canvasRef} className="canvas" />
 
-            {/* Ink-brush "Sai" — top-left header style */}
+            {/* Ink-brush "Sai" — sumi-e style custom brush-stroke paths */}
             <div className="sai-logo">
-              <svg viewBox="0 0 160 44" className="sai-svg">
+              <svg viewBox="0 0 175 50" className="sai-svg">
                 <defs>
-                  {/* Ink bleed filter — organic rough edges + ink spread */}
-                  <filter id="inkBleed" x="-25%" y="-25%" width="150%" height="150%">
+                  {/* Ink bleed — organic rough edges + ink spread */}
+                  <filter id="inkBleed" x="-30%" y="-30%" width="160%" height="160%">
                     <feTurbulence
-                    type="fractalNoise"
-                    baseFrequency="0.025"
-                    numOctaves="3"
-                    seed="3"
-                    result="noise"
+                      type="fractalNoise"
+                      baseFrequency="0.025"
+                      numOctaves="4"
+                      seed="3"
+                      result="noise"
                     />
                     <feDisplacementMap
-                    in="SourceGraphic"
-                    in2="noise"
-                    scale="2.5"
-                    xChannelSelector="R"
-                    yChannelSelector="G"
-                    result="roughened"
+                      in="SourceGraphic"
+                      in2="noise"
+                      scale="3.5"
+                      xChannelSelector="R"
+                      yChannelSelector="G"
+                      result="roughened"
                     />
                     <feGaussianBlur
-                    in="roughened"
-                    stdDeviation="0.9"
-                    result="bleed"
+                      in="roughened"
+                      stdDeviation="0.8"
+                      result="bleed"
                     />
                     <feComponentTransfer in="bleed">
-                      <feFuncA type="linear" slope="0.25" intercept="0" />
+                      <feFuncA type="linear" slope="0.2" intercept="0" />
                     </feComponentTransfer>
                     <feMerge>
                       <feMergeNode result="bleedLayer" />
@@ -67,27 +67,22 @@ export default function App() {
                     </feMerge>
                   </filter>
 
-                  {/* Wet-edge filter — subtle ink pool beneath the text */}
-                  <filter id="wetEdge" x="-15%" y="-15%" width="130%" height="130%">
+                  {/* Wet-edge — ink pool / spread underneath strokes */}
+                  <filter id="wetEdge" x="-20%" y="-20%" width="140%" height="140%">
                     <feMorphology
-                    in="SourceGraphic"
-                    operator="dilate"
-                    radius="0.4"
-                    result="expanded"
+                      in="SourceGraphic"
+                      operator="dilate"
+                      radius="0.6"
+                      result="expanded"
                     />
                     <feColorMatrix
-                    in="expanded"
-                    type="matrix"
-                    values="
-                        0 0 0 0 0
-                        0 0 0 0 0
-                        0 0 0 0 0
-                        1.5 0 0 0 0
-                      "
-                    result="darkSpread"
+                      in="expanded"
+                      type="matrix"
+                      values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0   2 0 0 0 0"
+                      result="darkSpread"
                     />
                     <feComponentTransfer in="darkSpread">
-                      <feFuncA type="linear" slope="0.15" />
+                      <feFuncA type="linear" slope="0.12" />
                     </feComponentTransfer>
                     <feMerge>
                       <feMergeNode in="darkSpread" />
@@ -95,196 +90,213 @@ export default function App() {
                     </feMerge>
                   </filter>
 
-                  {/* Heavy brush displacement — for the thick trail body */}
+                  {/* Heavy brush displacement — thick stroke texture */}
                   <filter id="heavyBrush" x="-10%" y="-150%" width="120%" height="400%">
                     <feTurbulence
-                    type="fractalNoise"
-                    baseFrequency="0.035"
-                    numOctaves="3"
-                    seed="19"
-                    result="heavyNoise"
+                      type="fractalNoise"
+                      baseFrequency="0.035"
+                      numOctaves="3"
+                      seed="19"
+                      result="heavyNoise"
                     />
                     <feDisplacementMap
-                    in="SourceGraphic"
-                    in2="heavyNoise"
-                    scale="3.5"
-                    xChannelSelector="R"
-                    yChannelSelector="G"
+                      in="SourceGraphic"
+                      in2="heavyNoise"
+                      scale="4"
+                      xChannelSelector="R"
+                      yChannelSelector="G"
                     />
                   </filter>
 
-                  {/* Dry-brush texture for hair-line details */}
+                  {/* Dry-brush — hair-line texture for tails and highlights */}
                   <filter id="dryBrush" x="-10%" y="-200%" width="130%" height="500%">
                     <feTurbulence
-                    type="fractalNoise"
-                    baseFrequency="0.06"
-                    numOctaves="3"
-                    seed="23"
-                    result="dryNoise"
+                      type="fractalNoise"
+                      baseFrequency="0.07"
+                      numOctaves="3"
+                      seed="23"
+                      result="dryNoise"
                     />
                     <feDisplacementMap
-                    in="SourceGraphic"
-                    in2="dryNoise"
-                    scale="2.5"
-                    xChannelSelector="R"
-                    yChannelSelector="G"
+                      in="SourceGraphic"
+                      in2="dryNoise"
+                      scale="3"
+                      xChannelSelector="R"
+                      yChannelSelector="G"
                     />
                   </filter>
 
-                  {/* Bold ink gradient — saturated dark, trails off to transparent */}
-                  <linearGradient id="boldTrailGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stop-color="#0a0a0a" stop-opacity="1.0" />
-                    <stop offset="15%" stop-color="#111" stop-opacity="0.97" />
-                    <stop offset="40%" stop-color="#111" stop-opacity="0.85" />
-                    <stop offset="65%" stop-color="#1a1a1a" stop-opacity="0.5" />
-                    <stop offset="82%" stop-color="#222" stop-opacity="0.18" />
-                    <stop offset="92%" stop-color="#333" stop-opacity="0.05" />
-                    <stop offset="100%" stop-color="#444" stop-opacity="0.0" />
+                  {/* Torn-edge — aggressive ragged edges */}
+                  <filter id="tornEdge" x="-20%" y="-20%" width="140%" height="140%">
+                    <feTurbulence
+                      type="fractalNoise"
+                      baseFrequency="0.04"
+                      numOctaves="4"
+                      seed="7"
+                      result="noise"
+                    />
+                    <feDisplacementMap
+                      in="SourceGraphic"
+                      in2="noise"
+                      scale="3"
+                      xChannelSelector="R"
+                      yChannelSelector="G"
+                      result="displaced"
+                    />
+                    <feGaussianBlur in="displaced" stdDeviation="0.4" result="blurred" />
+                    <feComponentTransfer in="blurred">
+                      <feFuncA type="linear" slope="1.3" intercept="-0.08" />
+                    </feComponentTransfer>
+                  </filter>
+
+                  {/* Bold ink gradient — fades out for trailing stroke */}
+                  <linearGradient id="trailGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#0a0a0a" stop-opacity="1" />
+                    <stop offset="30%" stop-color="#111" stop-opacity="0.9" />
+                    <stop offset="55%" stop-color="#1a1a1a" stop-opacity="0.55" />
+                    <stop offset="75%" stop-color="#222" stop-opacity="0.2" />
+                    <stop offset="100%" stop-color="#444" stop-opacity="0" />
                   </linearGradient>
 
-                  {/* Dark under-layer for wet-edge pooling */}
-                  <linearGradient id="trailWetGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stop-color="#000" stop-opacity="0.4" />
-                    <stop offset="25%" stop-color="#0a0a0a" stop-opacity="0.25" />
-                    <stop offset="55%" stop-color="#1a1a1a" stop-opacity="0.1" />
-                    <stop offset="80%" stop-color="#2a2a2a" stop-opacity="0.03" />
-                    <stop offset="100%" stop-color="#000" stop-opacity="0.0" />
+                  {/* Wet under-pool gradient */}
+                  <linearGradient id="wetGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#000" stop-opacity="0.35" />
+                    <stop offset="35%" stop-color="#0a0a0a" stop-opacity="0.2" />
+                    <stop offset="70%" stop-color="#1a1a1a" stop-opacity="0.06" />
+                    <stop offset="100%" stop-color="#000" stop-opacity="0" />
                   </linearGradient>
                 </defs>
 
-                {/* Wet-edge ink pool beneath the text */}
-                <text
-               className="sai-text"
-               x="4"
-               y="25"
-               filter="url(#wetEdge)"
-               style={{
-                 fontFamily: "'Brush Script MT', 'Segoe Script', cursive",
-                 opacity: 0.35,
-                  }}
-                >
-               Sai
-                </text>
+                {/* ============== S LETTER ============== */}
 
-                {/* Main ink text with rough brush-stroke edges */}
-                <text
-               className="sai-text"
-               x="4"
-               y="25"
-               filter="url(#inkBleed)"
-               style={{
-                 fontFamily: "'Brush Script MT', 'Segoe Script', cursive",
-                  }}
-                >
-               Sai
-                </text>
-
-                {/* === THICK, STRAIGHT TRAILING INK STROKE === */}
-
-                {/* 1. Wet under-pool — casts a dark ink spill beneath */}
+                {/* S — wet under-pool */}
                 <path
-               d="M37,21.5
-                  L115,22.5
-                  C118,22.6 120,23.5 121,25
-                  C120,23.5 117,22 115,21.5
-                  L37,19.5
-                  C35,19.3 33.5,20 34,21
-                  C34.2,21.3 35,21.7 37,21.5Z"
-               fill="url(#trailWetGrad)"
-               filter="url(#wetEdge)"
-               opacity="0.75"
+                  d="M 8,10 C 18,4 30,5 34,12 C 38,18 36,26 30,31 C 24,36 14,38 8,38 C 5,38 3,36 4,34"
+                  fill="none" stroke="#000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"
+                  opacity="0.18" filter="url(#wetEdge)"
                 />
 
-                {/* 2. Main thick trail body — heavy brush press, straight line */}
+                {/* S — main brush stroke */}
                 <path
-               d="M38,20.5
-                  L113,21.5
-                  C116,21.6 118,22.5 118.5,24
-                  C117.5,22.5 115.5,21 113,20.5
-                  L38,18.5
-                  C36,18.3 34.5,19 35,20
-                  C35.2,20.3 36,20.7 38,20.5Z"
-               fill="url(#boldTrailGrad)"
-               filter="url(#heavyBrush)"
-               opacity="0.95"
+                  d="M 8,10 C 18,4 30,5 34,12 C 38,18 36,26 30,31 C 24,36 14,38 8,38 C 5,38 3,36 4,34"
+                  fill="none" stroke="#111" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"
+                  opacity="0.93" filter="url(#tornEdge)"
                 />
 
-                {/* 3. Dry-brush layer — lighter highlight running along top edge of trail */}
+                {/* S — dry-brush highlight */}
                 <path
-               d="M42,19.5
-                  L108,20.3
-                  C110,20.3 111.5,20.8 112,21.5
-                  C111,20.8 109.5,20 108,19.8
-                  L42,18.8
-                  C40,18.6 39,19 39.5,19.5
-                  C39.7,19.7 40,19.6 42,19.5Z"
-               fill="url(#boldTrailGrad)"
-               filter="url(#dryBrush)"
-               opacity="0.55"
+                  d="M 8,10 C 18,4 30,5 34,12 C 38,18 36,26 30,31 C 24,36 14,38 8,38"
+                  fill="none" stroke="#222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                  opacity="0.35" filter="url(#dryBrush)"
                 />
 
-                {/* 4. Dry-brush hairs flying off the tail end */}
+                {/* S — ink pool at brush-down (top-left) */}
+                <ellipse cx="9" cy="10" rx="6" ry="5.5" fill="#111" opacity="0.85" filter="url(#inkBleed)" />
+                <ellipse cx="9" cy="10" rx="8" ry="7" fill="#000" opacity="0.12" filter="url(#wetEdge)" />
+
+                {/* S — ink pool at bottom curve (brush press) */}
+                <ellipse cx="8" cy="37" rx="5" ry="4" fill="#111" opacity="0.4" filter="url(#wetEdge)" />
+
+                {/* ============== A LETTER ============== */}
+
+                {/* a — wet under-pool */}
                 <path
-               d="M117,19
-                  L124,18.5
-                  C125.5,18.4 126,18.8 125.5,19.2
-                  L117.5,19.8Z"
-               fill="#0a0a0a"
-               opacity="0.5"
-                />
-                <path
-               d="M118,17.5
-                  L126,16.8
-                  C127.5,16.7 128,17.2 127.5,17.6
-                  L118.5,18.5Z"
-               fill="#111"
-               opacity="0.35"
-                />
-                <path
-               d="M117,21
-                  L125,20.5
-                  C126.5,20.4 127,20.8 126.5,21.2
-                  L117.5,21.5Z"
-               fill="#0a0a0a"
-               opacity="0.4"
-                />
-                <path
-               d="M118,22.5
-                  L123,22.2
-                  C124,22.1 124.5,22.5 124,22.8
-                  L118.2,23Z"
-               fill="#111"
-               opacity="0.3"
+                  d="M 42,34 C 44,20 50,16 56,21 C 60,26 58,34 52,36 C 47,38 43,36 42,34"
+                  fill="none" stroke="#000" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"
+                  opacity="0.18" filter="url(#wetEdge)"
                 />
 
-                {/* 5. Ink splatter — aggressive flicks at the stroke end */}
-                <circle cx="123" cy="17.5" r="1.4" fill="#0a0a0a" opacity="0.55" />
-                <circle cx="126" cy="18.5" r="0.9" fill="#111" opacity="0.4" />
-                <circle cx="121" cy="19" r="0.7" fill="#0a0a0a" opacity="0.45" />
-                <circle cx="127" cy="20" r="1.1" fill="#111" opacity="0.35" />
-                <circle cx="128.5" cy="17" r="0.5" fill="#0a0a0a" opacity="0.3" />
-                <circle cx="124.5" cy="21.5" r="0.6" fill="#222" opacity="0.25" />
-                <circle cx="119" cy="16.5" r="0.8" fill="#111" opacity="0.3" />
+                {/* a — main brush stroke */}
+                <path
+                  d="M 42,34 C 44,20 50,16 56,21 C 60,26 58,34 52,36 C 47,38 43,36 42,34"
+                  fill="none" stroke="#111" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"
+                  opacity="0.93" filter="url(#tornEdge)"
+                />
 
-                {/* 6. Ink pool at the stroke origin — saturated start */}
-                <ellipse cx="39" cy="19.5" rx="7" ry="5" fill="url(#trailWetGrad)" filter="url(#wetEdge)" opacity="0.65" />
+                {/* a — dry-brush highlight */}
+                <path
+                  d="M 42,34 C 44,20 50,16 56,21 C 60,26 58,34 52,36"
+                  fill="none" stroke="#222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  opacity="0.3" filter="url(#dryBrush)"
+                />
 
-                {/* 7. Scattered dry-brush texture marks along the trail body */}
-                <path d="M60,18.8 L61,18 61.5,20 L60.2,19.8Z" fill="#0a0a0a" opacity="0.4" />
-                <path d="M75,18.5 L75.8,17.5 76.2,19.5 L75.2,19.5Z" fill="#111" opacity="0.35" />
-                <path d="M90,18.2 L90.8,17.2 91.2,19.2 L90.2,19.2Z" fill="#0a0a0a" opacity="0.3" />
-                <path d="M102,18 L102.5,17 103,19 L102.2,19Z" fill="#111" opacity="0.25" />
-                <path d="M110,17.8 L110.5,16.8 111,18.5 L110.2,18.2Z" fill="#0a0a0a" opacity="0.35" />
-                </svg>
+                {/* a — ink pool at brush-down */}
+                <ellipse cx="42" cy="34" rx="4" ry="3.5" fill="#111" opacity="0.35" filter="url(#wetEdge)" />
 
-              {/* Subtle ink splatter dots — organic detail */}
-              <div className="sai-dots">
-                <div className="sai-dot" />
-                <div className="sai-dot" />
-                <div className="sai-dot" />
-                <div className="sai-dot" />
-                <div className="sai-dot" />
-              </div>
+                {/* a — tail flick */}
+                <path
+                  d="M 52,36 C 54,39 58,37 60,32"
+                  fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"
+                  opacity="0.85" filter="url(#dryBrush)"
+                />
+
+                {/* ============== I DOT ============== */}
+
+                {/* i — wet under-pool */}
+                <ellipse cx="66" cy="14" rx="5.5" ry="6" fill="#000" opacity="0.12" filter="url(#wetEdge)" />
+
+                {/* i — main ink splat */}
+                <ellipse cx="66" cy="14" rx="4" ry="4.5" fill="#111" opacity="0.9" filter="url(#inkBleed)" />
+
+                {/* i — dry highlight */}
+                <ellipse cx="65.5" cy="13.5" rx="2" ry="2" fill="#333" opacity="0.25" filter="url(#dryBrush)" />
+
+                {/* ============== TRAILING STROKE ============== */}
+
+                {/* Trail — wet under-layer */}
+                <path
+                  d="M 57,34 Q 72,35 83,32"
+                  fill="none" stroke="#000" stroke-width="8" stroke-linecap="round"
+                  opacity="0.15" filter="url(#wetEdge)"
+                />
+
+                {/* Trail — main body (short, thick, tapers via gradient) */}
+                <path
+                  d="M 57,34 Q 70,34.5 80,32"
+                  fill="none" stroke="url(#trailGrad)" stroke-width="5" stroke-linecap="round"
+                  opacity="0.92" filter="url(#heavyBrush)"
+                />
+
+                {/* Trail — dry-brush highlight on top edge */}
+                <path
+                  d="M 57,33 Q 69,33.5 78,31.5"
+                  fill="none" stroke="#222" stroke-width="1.5" stroke-linecap="round"
+                  opacity="0.4" filter="url(#dryBrush)"
+                />
+
+                {/* Trail — dry-brush flicks at the tail */}
+                <path d="M 80,31 L 87,28" fill="none" stroke="#111" stroke-width="1.5" stroke-linecap="round" opacity="0.4" filter="url(#dryBrush)" />
+                <path d="M 81,33.5 L 86,35" fill="none" stroke="#111" stroke-width="1.2" stroke-linecap="round" opacity="0.3" filter="url(#dryBrush)" />
+                <path d="M 79,30 L 84,27.5" fill="none" stroke="#222" stroke-width="1" stroke-linecap="round" opacity="0.25" filter="url(#dryBrush)" />
+                <path d="M 82,32.5 L 85,33" fill="none" stroke="#0a0a0a" stroke-width="1.8" stroke-linecap="round" opacity="0.2" filter="url(#dryBrush)" />
+
+                {/* Trail — subtle ink pool at the start */}
+                <ellipse cx="57" cy="34" rx="5" ry="3.5" fill="url(#wetGrad)" filter="url(#wetEdge)" opacity="0.5" />
+
+                {/* ============== INK SPLATTERS ============== */}
+
+                {/* Tail-end splatter */}
+                <circle cx="83" cy="26" r="1.4" fill="#0a0a0a" opacity="0.45" />
+                <circle cx="86" cy="30" r="1" fill="#111" opacity="0.35" />
+                <circle cx="88" cy="33" r="0.7" fill="#0a0a0a" opacity="0.25" />
+                <circle cx="85" cy="25" r="0.6" fill="#222" opacity="0.2" />
+                <circle cx="82" cy="28" r="0.9" fill="#111" opacity="0.3" />
+                <circle cx="87" cy="36" r="0.5" fill="#1a1a1a" opacity="0.15" />
+                <circle cx="79" cy="26.5" r="0.7" fill="#0a0a0a" opacity="0.25" />
+
+                {/* Scatter flecks along the trail body */}
+                <path d="M 63,33.5 L 63.5,32.5 64,34.5 63.2,34Z" fill="#0a0a0a" opacity="0.3" />
+                <path d="M 70,33 L 70.5,32 71,34 70.2,33.5Z" fill="#111" opacity="0.25" />
+                <path d="M 76,32 L 76.5,31 77,33 76.2,32.5Z" fill="#0a0a0a" opacity="0.2" />
+
+                {/* Ambient ink mist — tiny faint dots around the logo */}
+                <circle cx="15" cy="6" r="0.4" fill="#1a1a1a" opacity="0.12" />
+                <circle cx="35" cy="14" r="0.3" fill="#222" opacity="0.1" />
+                <circle cx="50" cy="14" r="0.5" fill="#1a1a1a" opacity="0.08" />
+                <circle cx="72" cy="12" r="0.3" fill="#333" opacity="0.1" />
+                <circle cx="25" cy="41" r="0.4" fill="#1a1a1a" opacity="0.1" />
+                <circle cx="90" cy="30" r="0.3" fill="#333" opacity="0.08" />
+              </svg>
             </div>
           </>
         );

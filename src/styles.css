@@ -23,7 +23,7 @@ body {
   background: transparent;
 }
 
-/* Ink-brush "Sai" — top-left header style */
+/* Ink-brush "Sai" — sumi-e brush-stroke logo */
 .sai-logo {
   position: fixed;
   top: 20px;
@@ -47,79 +47,7 @@ body {
 }
 
 .sai-svg {
-  width: 130px;
-  height: 38px;
-  transform: rotate(-3deg);
-}
-
-.sai-text {
-  fill: #111;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  user-select: none;
-}
-
-/* Subtle ink splatter dots */
-.sai-dots {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.sai-dot {
-  position: absolute;
-  border-radius: 50%;
-  background: #1a1a1a;
-  opacity: 0;
-  animation: dotFade 1.4s ease-out both;
-}
-
-.sai-dot:nth-child(1) {
-  width: 2px;
-  height: 2px;
-  top: 14px;
-  left: 4px;
-}
-
-.sai-dot:nth-child(2) {
-  width: 1.5px;
-  height: 1.5px;
-  top: 26px;
-  right: 10px;
-}
-
-.sai-dot:nth-child(3) {
-  width: 1px;
-  height: 1px;
-  top: 8px;
-  right: 30px;
-}
-
-.sai-dot:nth-child(4) {
-  width: 2px;
-  height: 2px;
-  top: 28px;
-  left: 35px;
-}
-
-.sai-dot:nth-child(5) {
-  width: 1.5px;
-  height: 1.5px;
-  top: 6px;
-  right: 15px;
-}
-
-@keyframes dotFade {
-  from {
-    opacity: 0;
-    transform: scale(0.5);
-    }
-  to {
-    opacity: var(--dot-opacity, 0.15);
-    transform: scale(1);
-    }
+  width: 145px;
+  height: 42px;
+  transform: rotate(-2deg);
 }
