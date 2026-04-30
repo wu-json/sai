@@ -1,0 +1,192 @@
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "Songti SC", serif;
+  color: #1a1a1a;
+  background: #0e0e10;
+  /* Subtle vignette so the scroll feels lit from above */
+  background:
+    radial-gradient(ellipse at 50% 30%, #1f1f22 0%, #0b0b0d 70%),
+    #0b0b0d;
+  overflow: hidden;
+}
+
+/* ---------- Stage ---------- */
+.stage {
+  height: 100%;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+/* ---------- Scroll ---------- */
+.scroll {
+  --paper: #ece4d2;            /* aged paper, warm-neutral but desaturated */
+  --paper-shadow: #8c8472;
+  --ink: #111111;
+  --roller: #1b1b1b;
+  --roller-hi: #3a3a3a;
+  --roller-lo: #060606;
+  --cap: #d8d2c2;              /* bone / ivory finial */
+  --cap-shadow: #6a6558;
+
+  width: min(78vw, 880px);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.55));
+}
+
+/* ---------- Rollers (jikugi) ---------- */
+.roller {
+  position: relative;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  /* Caps overhang the bar on both sides */
+  margin: 0 -28px;
+}
+
+.roller__bar {
+  flex: 1;
+  height: 100%;
+  background:
+    linear-gradient(
+      to bottom,
+      var(--roller-hi) 0%,
+      var(--roller) 30%,
+      var(--roller-lo) 70%,
+      var(--roller) 100%
+    );
+  /* Faint horizontal grain */
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0 2px,
+      rgba(0, 0, 0, 0.05) 2px 4px
+    ),
+    linear-gradient(
+      to bottom,
+      var(--roller-hi) 0%,
+      var(--roller) 30%,
+      var(--roller-lo) 70%,
+      var(--roller) 100%
+    );
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+}
+
+.roller__cap {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 35% 35%,
+      #f5f0e1 0%,
+      var(--cap) 45%,
+      var(--cap-shadow) 100%
+    );
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.4),
+    inset -3px -4px 8px rgba(0, 0, 0, 0.35),
+    0 4px 6px rgba(0, 0, 0, 0.45);
+  flex: none;
+  z-index: 1;
+}
+
+.roller--top .roller__cap {
+  align-self: center;
+}
+
+/* ---------- Paper field ---------- */
+.scroll__paper {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  background: var(--paper);
+  /* Layered noise + soft staining to suggest washi paper, fully monochrome */
+  background-image:
+    radial-gradient(
+      ellipse at 20% 10%,
+      rgba(0, 0, 0, 0.05) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 85% 90%,
+      rgba(0, 0, 0, 0.06) 0%,
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.018) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.018) 0 1px,
+      transparent 1px 4px
+    ),
+    linear-gradient(180deg, #efe7d5 0%, var(--paper) 50%, #e2d9c4 100%);
+  border-left: 1px solid rgba(0, 0, 0, 0.35);
+  border-right: 1px solid rgba(0, 0, 0, 0.35);
+  /* Slight inner shadow from the rollers */
+  box-shadow:
+    inset 0 14px 18px -10px rgba(0, 0, 0, 0.55),
+    inset 0 -14px 18px -10px rgba(0, 0, 0, 0.55);
+  padding: 28px;
+}
+
+/* Thin silk trim strip just under the top roller and above the bottom one */
+.scroll__paper::before,
+.scroll__paper::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background:
+    linear-gradient(
+      90deg,
+      #2a2a2a 0%,
+      #444 50%,
+      #2a2a2a 100%
+    );
+  border-top: 1px solid rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+}
+.scroll__paper::before { top: 0; }
+.scroll__paper::after { bottom: 0; }
+
+/* ---------- Ink frame around the canvas ---------- */
+.scroll__inkframe {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  /* Double sumi line: outer thick, inner hairline */
+  border: 2px solid var(--ink);
+  outline: 1px solid var(--ink);
+  outline-offset: 6px;
+  background: transparent;
+}
+
+/* The actual blank canvas */
+.scroll__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
