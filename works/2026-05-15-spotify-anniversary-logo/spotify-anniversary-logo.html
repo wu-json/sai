@@ -459,6 +459,52 @@
       flex-shrink: 0;
       filter: drop-shadow(0 0 8px rgba(46, 230, 110, 0.5));
     }
+
+    /* === Variant: 20th Anniversary — emit (digits "20" + OG bars above the "0") === */
+    .variant-anniversary-emit .anniv-digit {
+      font-size: 64cqh;
+      padding: 0;
+    }
+    .variant-anniversary-emit .emit-zero-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .variant-anniversary-emit .app-icon svg,
+    .ios-spotify-slot.variant-anniversary-emit > svg {
+      position: absolute;
+      bottom: 75%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 38cqh;
+      height: 23cqh;
+      aspect-ratio: auto;
+    }
+
+    /* === Variant: 20th Anniversary — bleed (oversized Spotify orb leaking past the squircle) === */
+    .variant-anniversary-bleed .app-icon,
+    .ios-spotify-slot.variant-anniversary-bleed {
+      justify-content: flex-start;
+      padding-left: 14%;
+      padding-right: 0;
+    }
+    .variant-anniversary-bleed .anniv-digit {
+      font-size: 72cqh;
+      position: relative;
+      z-index: 2;
+    }
+    .variant-anniversary-bleed .app-icon svg,
+    .ios-spotify-slot.variant-anniversary-bleed > svg {
+      position: absolute;
+      right: -72%;
+      top: 50%;
+      left: auto;
+      transform: translateY(-50%);
+      width: auto;
+      height: 115cqh;
+      aspect-ratio: 1 / 1;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 14px rgba(46, 230, 110, 0.55));
+    }
   </style>
 </head>
 <body>
@@ -504,20 +550,55 @@
         </svg>
       </div>
     </div>
-    <div class="cell">
+    <div class="cell variant-anniversary variant-anniversary-emit">
       <div class="halo"></div>
       <div class="app-icon">
-        <svg viewBox="0 0 168 168" xmlns="http://www.w3.org/2000/svg" aria-label="Spotify">
-          <circle cx="84" cy="84" r="84" fill="#1ED760"/>
-          <path fill="#000000" d="M119.6 117.2c-1.5 2.5-4.7 3.2-7.2 1.7-19.7-12-44.4-14.7-73.6-8-2.8.6-5.6-1.1-6.3-3.9-.6-2.8 1.1-5.6 3.9-6.3 31.9-7.3 59.3-4.2 81.4 9.3 2.5 1.5 3.3 4.7 1.8 7.2zm9.5-21.2c-1.9 3.1-5.9 4-9 2.1-22.5-13.8-56.8-17.8-83.4-9.7-3.5 1.1-7.2-.9-8.3-4.4-1.1-3.5.9-7.2 4.4-8.3 30.4-9.2 68.2-4.8 94 11 3.1 1.9 4 5.9 2.3 9.3zm.8-22.1C103 58.5 57.6 56.8 32.3 64.5c-4.2 1.3-8.6-1.1-9.9-5.3-1.3-4.2 1.1-8.6 5.3-9.9 29-8.8 79.2-7.1 110.4 11.4 3.8 2.2 5 7.1 2.8 10.8-2.2 3.8-7.1 5-10.9 2.8z"/>
-        </svg>
+        <span class="anniv-digit">2</span>
+        <span class="anniv-digit emit-zero-wrap">
+          <svg viewBox="22 49 124 75" xmlns="http://www.w3.org/2000/svg" aria-label="Spotify signals">
+            <defs>
+              <linearGradient id="emerald-emit" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"  stop-color="#eaffe9"/>
+                <stop offset="10%" stop-color="#6df0a3"/>
+                <stop offset="28%" stop-color="#1bc05a"/>
+                <stop offset="48%" stop-color="#0a5a26"/>
+                <stop offset="60%" stop-color="#2ce370"/>
+                <stop offset="75%" stop-color="#1ed760"/>
+                <stop offset="100%" stop-color="#04361a"/>
+              </linearGradient>
+            </defs>
+            <path fill="url(#emerald-emit)" d="M119.6 117.2c-1.5 2.5-4.7 3.2-7.2 1.7-19.7-12-44.4-14.7-73.6-8-2.8.6-5.6-1.1-6.3-3.9-.6-2.8 1.1-5.6 3.9-6.3 31.9-7.3 59.3-4.2 81.4 9.3 2.5 1.5 3.3 4.7 1.8 7.2zm9.5-21.2c-1.9 3.1-5.9 4-9 2.1-22.5-13.8-56.8-17.8-83.4-9.7-3.5 1.1-7.2-.9-8.3-4.4-1.1-3.5.9-7.2 4.4-8.3 30.4-9.2 68.2-4.8 94 11 3.1 1.9 4 5.9 2.3 9.3zm.8-22.1C103 58.5 57.6 56.8 32.3 64.5c-4.2 1.3-8.6-1.1-9.9-5.3-1.3-4.2 1.1-8.6 5.3-9.9 29-8.8 79.2-7.1 110.4 11.4 3.8 2.2 5 7.1 2.8 10.8-2.2 3.8-7.1 5-10.9 2.8z"/>
+          </svg>0</span>
       </div>
     </div>
-    <div class="cell">
+    <div class="cell variant-anniversary variant-anniversary-bleed">
       <div class="halo"></div>
       <div class="app-icon">
-        <svg viewBox="0 0 168 168" xmlns="http://www.w3.org/2000/svg" aria-label="Spotify">
-          <circle cx="84" cy="84" r="84" fill="#1ED760"/>
+        <span class="anniv-digit">2</span>
+        <svg viewBox="0 0 168 168" xmlns="http://www.w3.org/2000/svg" aria-label="Spotify 20 bleed">
+          <defs>
+            <linearGradient id="emerald-bleed" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%"  stop-color="#eaffe9"/>
+              <stop offset="10%" stop-color="#6df0a3"/>
+              <stop offset="28%" stop-color="#1bc05a"/>
+              <stop offset="48%" stop-color="#0a5a26"/>
+              <stop offset="60%" stop-color="#2ce370"/>
+              <stop offset="75%" stop-color="#1ed760"/>
+              <stop offset="100%" stop-color="#04361a"/>
+            </linearGradient>
+            <radialGradient id="emerald-bleed-spec" cx="22%" cy="22%" r="55%">
+              <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.6"/>
+              <stop offset="35%" stop-color="#ffffff" stop-opacity="0.08"/>
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="emerald-bleed-rim" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stop-color="#9affc4" stop-opacity="0.6"/>
+              <stop offset="20%" stop-color="#9affc4" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <circle cx="84" cy="84" r="84" fill="url(#emerald-bleed)"/>
+          <circle cx="84" cy="84" r="84" fill="url(#emerald-bleed-rim)"/>
+          <circle cx="84" cy="84" r="84" fill="url(#emerald-bleed-spec)"/>
           <path fill="#000000" d="M119.6 117.2c-1.5 2.5-4.7 3.2-7.2 1.7-19.7-12-44.4-14.7-73.6-8-2.8.6-5.6-1.1-6.3-3.9-.6-2.8 1.1-5.6 3.9-6.3 31.9-7.3 59.3-4.2 81.4 9.3 2.5 1.5 3.3 4.7 1.8 7.2zm9.5-21.2c-1.9 3.1-5.9 4-9 2.1-22.5-13.8-56.8-17.8-83.4-9.7-3.5 1.1-7.2-.9-8.3-4.4-1.1-3.5.9-7.2 4.4-8.3 30.4-9.2 68.2-4.8 94 11 3.1 1.9 4 5.9 2.3 9.3zm.8-22.1C103 58.5 57.6 56.8 32.3 64.5c-4.2 1.3-8.6-1.1-9.9-5.3-1.3-4.2 1.1-8.6 5.3-9.9 29-8.8 79.2-7.1 110.4 11.4 3.8 2.2 5 7.1 2.8 10.8-2.2 3.8-7.1 5-10.9 2.8z"/>
         </svg>
       </div>
@@ -644,10 +725,9 @@
         const sourceIcon = active.querySelector('.app-icon');
         if (sourceIcon) {
           spotifySlot.innerHTML = sourceIcon.innerHTML;
-          spotifySlot.classList.toggle(
-            'variant-anniversary',
-            active.classList.contains('variant-anniversary')
-          );
+          ['variant-anniversary', 'variant-anniversary-emit', 'variant-anniversary-bleed'].forEach(cls => {
+            spotifySlot.classList.toggle(cls, active.classList.contains(cls));
+          });
         }
         document.body.classList.add('mock-mode');
       }
