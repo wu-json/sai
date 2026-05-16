@@ -488,16 +488,17 @@
     /* === Variant: 20th Anniversary — bleed (oversized Spotify orb leaking past the squircle) === */
     .variant-anniversary-bleed .app-icon,
     .ios-spotify-slot.variant-anniversary-bleed {
-      justify-content: flex-start;
-      padding-left: 14%;
-      padding-right: 0;
+      padding: 0;
       overflow: hidden;
       clip-path: inset(0 round 22.5%);
       isolation: isolate;
     }
     .variant-anniversary-bleed .anniv-digit {
+      position: absolute;
+      left: 14%;
+      top: 47%;
+      transform: translateY(-50%);
       font-size: 72cqh;
-      position: relative;
       z-index: 2;
     }
     .variant-anniversary-bleed .app-icon svg,
